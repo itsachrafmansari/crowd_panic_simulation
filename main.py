@@ -13,8 +13,8 @@ screen = pygame.display.set_mode((longeur_de_plan, hauteur_de_plan))
 fps = 60
 nombre_des_individus = 100
 individu_vitesse = 3
-individu_height = 25
-individu_wdith = 25
+individu_height = 30
+individu_width = 30
 collision_tolerance = 10
 
 
@@ -59,11 +59,10 @@ class Individu(pygame.Rect):
                     self.x_speed *= -1
                 if abs(other_object.right - self.left) < collision_tolerance and self.x_speed < 0:
                     self.x_speed *= -1
-                print("collision happened here !")
 
 
     def check_exit(self, collision_objects_list):
-        if (450 < self.center[0] < 500) and (250 < self.center[1] < 450):
+        if (475 + (individu_width/2) < self.centerx < 525 - (individu_width/2)) and (250 + (individu_height/2) < self.centery < 450 - (individu_height/2)):
             collision_objects_list.remove(self)
             return True
         else:
@@ -71,10 +70,10 @@ class Individu(pygame.Rect):
 
 
 def create_people():
-    x_radndom = randint(individu_wdith*2, longeur_de_plan - individu_wdith*2)
+    x_radndom = randint(individu_width*2, longeur_de_plan - individu_width*2)
     y_radndom = randint(individu_height*2, hauteur_de_plan - individu_height*2)
 
-    person = Individu(x_radndom, y_radndom, individu_wdith, individu_height, individu_vitesse, individu_vitesse, (randint(0,255), randint(0,255), randint(0,255)))
+    person = Individu(x_radndom, y_radndom, individu_width, individu_height, individu_vitesse, individu_vitesse, (randint(0,255), randint(0,255), randint(0,255)))
 
     return person
 
