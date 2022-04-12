@@ -1,102 +1,123 @@
-from random import randint
-from sys import exit
+import math
+
 import pygame
+import pymunk
+import sys
 
+from pymunk import Vec2d
 
-# Initialisation de la simulation
 pygame.init()
+screen = pygame.display.set_mode((900, 600))
 clock = pygame.time.Clock()
-longeur_de_plan = 1000
-hauteur_de_plan = 700
-couleur_de_arriere_plan = (255, 255, 250)
-screen = pygame.display.set_mode((longeur_de_plan, hauteur_de_plan))
-fps = 60
-nombre_des_individus = 100
-individu_vitesse = 3
-individu_height = 30
-individu_width = 30
-collision_tolerance = 10
+
+space = pymunk.Space()
+space.gravity = (0, 0)
 
 
-class Individu(pygame.Rect):
-
-    def __init__(self, left, top, width, height, x_speed, y_speed, color):
-        super().__init__(left, top, width, height)
-        self.x_speed = x_speed
-        self.y_speed = y_speed
+class Person:
+    def __init__(self, space, screen, x, y, radius, color):
+        self.screen = screen
+        self.x = x
+        self.y = y
+        self.radius = radius
         self.color = color
 
+        self.body = pymunk.Body(1, 1, body_type=pymunk.Body.DYNAMIC)
+        self.body.position = (x, y)
+        self.shape = pymunk.Circle(self.body, self.radius)
+        self.shape.elasticity = 0
+        self.shape.friction = 1
+        space.add(self.body, self.shape)
 
-    def deplacer(self):
-        self.x += self.x_speed
-        self.y += self.y_speed
+    def update_coordinates(self):
+        self.x = self.body.position.x
+        self.y = self.body.position.y
 
-        if self.left <= 0 and self.x_speed < 0:
-            self.x_speed *= -1
-        if self.right >= longeur_de_plan and self.x_speed > 0:
-            self.x_speed *= -1
-        if self.top <= 0 and self.y_speed < 0:
-            self.y_speed *= -1
-        if self.bottom >= hauteur_de_plan and self.y_speed > 0:
-            self.y_speed *= -1
-        
-        pygame.draw.circle(screen, self.color, self.center, self.width / 2)
+    def pull_to_point(self, point_x, point_y):
+        direction_vector = Vec2d(point_x - self.x, point_y - self.y)
+        distance_to_point = math.sqrt(direction_vector.x**2 + direction_vector.y**2)
 
+        if distance_to_point:
+            self.body.apply_impulse_at_world_point(0.001 * distance_to_point * direction_vector, (self.x, self.y))
 
-    def check_collision(self, collision_objects_list):
-        collision_objects = collision_objects_list[:]
-        collision_objects.pop(collision_objects_list.index(self))
-        collision_objects.append(wall1)
-        collision_objects.append(wall2)
-
-        for other_object in collision_objects:
-            if self.colliderect(other_object):
-                if abs(other_object.bottom - self.top) < collision_tolerance and self.y_speed < 0:
-                    self.y_speed *= -1
-                if abs(other_object.top - self.bottom) < collision_tolerance and self.y_speed > 0:
-                    self.y_speed *= -1
-                if abs(other_object.left - self.right) < collision_tolerance and self.x_speed > 0:
-                    self.x_speed *= -1
-                if abs(other_object.right - self.left) < collision_tolerance and self.x_speed < 0:
-                    self.x_speed *= -1
+    def draw(self):
+        pygame.draw.circle(self.screen, self.color, self.shape.body.position, self.radius)
 
 
-    def check_exit(self, collision_objects_list):
-        if (475 + (individu_width/2) < self.centerx < 525 - (individu_width/2)) and (250 + (individu_height/2) < self.centery < 450 - (individu_height/2)):
-            collision_objects_list.remove(self)
-            return True
-        else:
-            return False
+class Obstacle:
+    def __init__(self, space, screen, x, y, ):
+        pass
+
+    def create_obstacle(self, main_space):
+        body = pymunk.Body(body_type=pymunk.Body.STATIC)
+        body.position = (450, 450)
+        shape = pymunk.Circle(body, 60)
+        shape.elasticity = 1
+        main_space.add(body, shape)
+        return shape
 
 
-def create_people():
-    x_radndom = randint(individu_width*2, longeur_de_plan - individu_width*2)
-    y_radndom = randint(individu_height*2, hauteur_de_plan - individu_height*2)
-
-    person = Individu(x_radndom, y_radndom, individu_width, individu_height, individu_vitesse, individu_vitesse, (randint(0,255), randint(0,255), randint(0,255)))
-
-    return person
+    def draw_obstacles(self, obstacles):
+        for obstacle in obstacles:
+            pygame.draw.circle(screen, (0, 255, 0), (int(obstacle.body.position.x), int(obstacle.body.position.y)), 60)
 
 
-objects = [create_people() for i in range(nombre_des_individus+1)]
+class Wall:
+    def __init__(self, space, screen, x, y, width, height, color):
+        self.screen = screen
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.top = y - height / 2
+        self.right = x + width / 2
+        self.left = x - width / 2
+        self.bottom = y + height / 2
+        self.color = color
 
-wall1 = pygame.Rect(475, 0, 50, 250)
-wall2 = pygame.Rect(475, 450, 50, 250)
+        self.shape = pymunk.Poly(
+            space.static_body,
+            [(self.left, self.top), (self.right, self.top), (self.right, self.bottom), (self.left, self.bottom)]
+        )
+        self.shape.elasticity = 0
+        space.add(self.shape)
 
 
-# Démarrage de la simulation
+    def draw(self):
+        pygame.draw.rect(self.screen, self.color, pygame.Rect(self.left, self.top, self.width, self.height))
+
+
+persons = [
+    Person(space, screen, 100, 100, 20, (100, 40, 0)),
+    Person(space, screen, 230, 200, 20, (100, 40, 0)),
+    Person(space, screen, 230, 100, 20, (100, 40, 0)),
+    Person(space, screen, 230, 100, 20, (100, 40, 0)),
+]
+
+walls = [
+    Wall(space, screen, 450, 560, 830, 10, (0, 40, 0)),
+    Wall(space, screen, 450, 40, 830, 10, (0, 40, 0)),
+    Wall(space, screen, 40, 300, 10, 510, (0, 40, 0)),
+    Wall(space, screen, 860, 300, 10, 510, (0, 40, 0)),
+]
+
 while True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
-            exit()
+            sys.exit()
 
-    screen.fill(couleur_de_arriere_plan)
-    pygame.draw.rect(screen, (0, 0, 0), wall1)
-    pygame.draw.rect(screen, (0, 0, 0), wall2)
-    for obj in objects:
-        if not obj.check_exit(objects):
-            obj.deplacer()
-            obj.check_collision(objects)
-    pygame.display.flip()
-    clock.tick(fps)
+    screen.fill((0, 0, 0))
+
+    for wall in walls:
+        wall.draw()
+
+    for person in persons:
+        person.update_coordinates()
+        person.pull_to_point(450, 300)
+        person.draw()
+
+
+    space.step(1/60)
+    pygame.display.update()
+    clock.tick(60)
