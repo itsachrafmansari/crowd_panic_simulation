@@ -1,5 +1,6 @@
 import math
 import pygame
+import pygame.gfxdraw
 import pymunk
 import sys
 
@@ -32,32 +33,6 @@ def calculate_distance(ax, ay, bx, by):
     return math.sqrt((bx - ax)**2 + (by - ay)**2)
 
 
-class Wall:
-    def __init__(self, space, screen, x, y, width, height, color):
-        self.screen = screen
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-        self.top = y - height / 2
-        self.right = x + width / 2
-        self.left = x - width / 2
-        self.bottom = y + height / 2
-        self.color = color
-
-        self.shape = pymunk.Poly(
-            space.static_body,
-            [(self.left, self.top), (self.right, self.top), (self.right, self.bottom), (self.left, self.bottom)]
-        )
-        self.shape.elasticity = 1
-        self.shape.friction = 1
-        space.add(self.shape)
-
-
-    def draw(self):
-        pygame.draw.rect(self.screen, self.color, pygame.Rect(self.left, self.top, self.width, self.height))
-
-
 class Obstacle:
     def __init__(self, space, screen, x, y, width, height, rotation, color):
         self.screen = screen
@@ -85,7 +60,7 @@ class Obstacle:
         for vertex in self.shape.get_vertices():
             x, y = vertex.rotated(self.shape.body.angle) + self.shape.body.position
             vertices.append((x, y))
-        pygame.draw.polygon(self.screen, self.color, vertices, True)
+        pygame.gfxdraw.filled_polygon(self.screen, vertices, self.color)
 
 
 class Person:
@@ -134,21 +109,20 @@ class Person:
                 break
 
 
-walls = [
-    Wall(space, screen, 650, 40, 1220, 10, (0, 40, 0)),
-    Wall(space, screen, 650, 660, 1220, 10, (0, 40, 0)),
-    Wall(space, screen, 40, 150, 10, 230, (0, 40, 0)),
-    Wall(space, screen, 40, 550, 10, 230, (0, 40, 0)),
-    Wall(space, screen, 1265, 350, 10, 630, (0, 40, 0))
-]
-
 obstacles = [
-    Obstacle(space, screen, x=120, y=150, width=10, height=270, rotation=35, color=(255, 0, 0)),
-    Obstacle(space, screen, x=120, y=550, width=10, height=270, rotation=-35, color=(255, 0, 0)),
+    Obstacle(space, screen, x=770, y=40, width=980, height=10, rotation=0, color=(0, 0, 0)),
+    Obstacle(space, screen, x=770, y=660, width=980, height=10, rotation=0, color=(0, 0, 0)),
+    Obstacle(space, screen, x=172, y=150, width=10, height=315, rotation=45, color=(0, 0, 0)),
+    Obstacle(space, screen, x=172, y=550, width=10, height=315, rotation=-45, color=(0, 0, 0)),
+    Obstacle(space, screen, x=1265, y=350, width=10, height=630, rotation=0, color=(0, 0, 0)),
+    # Obstacle(space, screen, x=120, y=150, width=10, height=270, rotation=35, color=(255, 0, 0)),
+    # Obstacle(space, screen, x=120, y=550, width=10, height=270, rotation=-35, color=(255, 0, 0)),
     Obstacle(space, screen, x=400, y=320, width=15, height=100, rotation=-45, color=(255, 0, 0)),
     Obstacle(space, screen, x=400, y=380, width=15, height=100, rotation=45, color=(255, 0, 0)),
 ]
-people = [Person(space, screen, randint(500, 1250), randint(150, 550), radius_of_person, (100, 40, 0)) for k in range(number_of_people)]
+
+people = [Person(space, screen, randint(500, 1250), randint(150, 550), radius_of_person, (0, 0, 200)) for k in range(number_of_people)]
+
 
 for j in sample(range(number_of_people), infected_people_at_start):
     people[j].is_infected = True
@@ -165,10 +139,7 @@ while True:
     number_of_people_infected = 0
     number_of_people_non_infected = 0
 
-    screen.fill((0, 0, 0))
-
-    for wall in walls:
-        wall.draw()
+    screen.fill((255, 255, 255))
 
     for obstacle in obstacles:
         obstacle.draw()
@@ -183,10 +154,10 @@ while True:
         if person.is_infected:
             number_of_people_infected += 1
             person.color = (255, 0, 0)
-            person.pull_to_point(f_x, f_y, 1000)
+            person.pull_to_point(f_x, f_y, 800)
         else:
             number_of_people_non_infected += 1
-            person.pull_to_point(f_x, f_y, 200)
+            person.pull_to_point(f_x, f_y, 100)
         person.update_coordinates()
         person.draw_person()
         # person.draw_force(f_x, f_y)
@@ -208,9 +179,9 @@ while True:
 plt.title(f"Total time was {round(total_time / 60, 2)} seconds")
 plt.xlabel("Time in seconds")
 plt.ylabel("Number of people")
-plt.plot(time_list, number_of_people_per_time, color=(0, 0, 0), label="People Inside")
-plt.plot(time_list, number_of_people_per_time_infected, color=(1, 0, 0), label="People Infected")
-plt.plot(time_list, number_of_people_per_time_non_infected, color=(0, 1, 0), label="People Non Infected")
-plt.plot(time_list, number_of_people_per_time_removed, color=(0, 0, 1), label="People Removed")
+plt.plot(time_list, number_of_people_per_time, color=(0, 0, 0), label="Person a l'interieur")
+plt.plot(time_list, number_of_people_per_time_infected, color=(1, 0, 0), label="I : Infectee")
+plt.plot(time_list, number_of_people_per_time_non_infected, color=(0, 1, 0), label="S : Susceptible")
+plt.plot(time_list, number_of_people_per_time_removed, color=(0, 0, 1), label="R : Removed (Supprime)")
 plt.legend()
 plt.show()
